@@ -290,15 +290,12 @@ ARDOUR::module_path_vst3 (string const& path)
 	string module_path;
 
 	if (!Glib::file_test (path, Glib::FILE_TEST_IS_DIR)) {
+#ifdef PLATFORM_WINDOWS
 		/* Until VST 3.6.10, the SDK allowed VST3 as a single dll file with the
 		 * vst3 extension. Since the folder is scanned recursively this leads to
 		 * an ambiguity (bundle and file):
 		 * ...\plugin.vst3
 		 * ...\plugin.vst3\Contents\x64_64-win\plugin.vst3
-		 *
-		 * This is not limited to Windows: a bundle that ships the Windows DLL
-		 * next to the native module (e.g. yabridge's merged bundles on Linux)
-		 * has the same layout, and the DLL can never be loaded here anyway.
 		 */
 		std::string p1 = Glib::path_get_dirname (path);
 		std::string p2 = Glib::path_get_dirname (p1);
@@ -315,6 +312,17 @@ ARDOUR::module_path_vst3 (string const& path)
 #endif
 			return "-1";
 		}
+#else
+		/* A single .vst3 file was only ever a valid module on Windows. Here it
+		 * is the Windows dll of a multi-platform bundle (Contents/x86_64-win/),
+		 * found because the folder is scanned recursively; the bundle itself is
+		 * used instead.
+		 */
+#ifndef NDEBUG
+		cerr << "Ignore .vst3 file (not a bundle) '" << path << "'\n";
+#endif
+		return "-1";
+#endif
 		module_path = path;
 	} else {
 		module_path = Glib::build_filename (path, "Contents",
